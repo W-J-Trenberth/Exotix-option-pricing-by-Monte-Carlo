@@ -7,6 +7,7 @@ Implementing a Monte-Carlo option pricing approach for exotic options.
 
 import numpy as np
 from scipy.special import erf
+import matplotlib.pyplot as plt 
 
 def main():
     
@@ -24,6 +25,7 @@ def main():
     lower_barrier = 0.95
     
     model = Black_Scholes_Model(dt, r, s_0, drift, volatility)
+    
     euro_stock_option = European_call_option(model, n_mat, strike_price)
     asian_stock_option = Asian_call_option(model, n_mat, strike_price)
     up_and_out_stock_option = up_and_out_call_option(model, n_mat, strike_price, upper_barrier)
@@ -32,6 +34,14 @@ def main():
     lookback_option = lookback_European_call_option(model, n_mat, strike_price)
     
     Num_trials = 10000
+    
+    
+    price_1, error_1 = euro_stock_option.Monte_Carlo_pricer(Num_trials)
+    price_2, error_2 = asian_stock_option.Monte_Carlo_pricer(Num_trials)
+    price_3, error_3 = up_and_out_stock_option.Monte_Carlo_pricer(Num_trials)
+    price_4, error_4 = down_and_out_stock_option.Monte_Carlo_pricer(Num_trials)
+    price_5, error_5 = double_barrier_out_stock_option.Monte_Carlo_pricer(Num_trials)
+    price_6, error_6 = lookback_option.Monte_Carlo_pricer(Num_trials)
     
     print("-----------------------------")
     print("Parameters")
@@ -47,12 +57,12 @@ def main():
     print("-----------------------------")
     print(f"Monte-Carlo prices with {Num_trials} trials")
     print("-----------------------------")
-    print(f"The European Call Option price is: {euro_stock_option.Monte_Carlo_pricer(Num_trials)}")
-    print(f"The Asian Call Option price is: {asian_stock_option.Monte_Carlo_pricer(Num_trials)}")
-    print(f"The Up-And-Out Barrier Option price is: {up_and_out_stock_option.Monte_Carlo_pricer(Num_trials)}")
-    print(f"The Down-And-Out Barrier Option price is: {down_and_out_stock_option.Monte_Carlo_pricer(Num_trials)}")
-    print(f"The Double Barrier Option price is: {double_barrier_out_stock_option.Monte_Carlo_pricer(Num_trials)}")
-    print(f"The Lookback European Call Option price is: {lookback_option.Monte_Carlo_pricer(Num_trials)}")
+    print(f"The European Call Option price is: {round(price_1,5)}   (standard error: {round(error_1,5)})")
+    print(f"The Asian Call Option price is: {round(price_2,5)}   (standard error: {round(error_2,5)})")
+    print(f"The Up-And-Out Barrier Option price is: {round(price_3,5)}   (standard error: {round(error_3,5)})")
+    print(f"The Down-And-Out Barrier Option price is: {round(price_4,5)}   (standard error: {round(error_4,5)})")
+    print(f"The Double Barrier Option price is: {round(price_5,5)}   (standard error: {round(error_5,5)})")
+    print(f"The Lookback European Call Option price is: {round(price_6,5)}   (standard error: {round(error_6,5)})")
     
 class Black_Scholes_Model:
     
@@ -112,19 +122,23 @@ class Option:
         
         Returns
         ---------
-        The average of the contract function over the trials
+       A tuple where the first component is the Monte Carlo mean of the contract 
+       fucntion and the second component is the standard error.
         '''
         
         dt = self.Black_Scholes_Model.dt 
         r = self.Black_Scholes_Model.interest_rate
         
-        current_average = 0
+        samples = np.zeros(Num_Trials)
+         
         
         for _ in range(Num_Trials):
-            current_average += self.contract(self.Black_Scholes_Model.risk_neutral_stock_path(self.n_mat))/Num_Trials 
+            samples[_] = np.exp(-dt*self.n_mat*r)*self.contract(self.Black_Scholes_Model.risk_neutral_stock_path(self.n_mat))
        
-        current_average = np.exp(-dt*self.n_mat*r)*current_average #
-        return current_average 
+        mean = np.sum(samples)/Num_Trials
+        var = np.sum((samples - mean)**2)
+        
+        return mean, np.sqrt(var/(Num_Trials - 1)**2)
     
 #Defining various options via inheritance from the Options class. 
 
